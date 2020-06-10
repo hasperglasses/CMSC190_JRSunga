@@ -40,10 +40,11 @@ from tensorflow.keras import backend as K
 
 import pickle
 
-
+# Pre-Defined variables
 button_foreground = "blue"
 button_background = "gray82"
 
+# Loading
 if(not (path.exists("Checker.txt") and path.exists("Known Faces") and path.exists("Unknown Group Pictures") and path.exists("Unknown Individual Faces"))):
 	print("Either Known Faces, Unknown Group Pictures, Unknown Individual Faces, Known Faces, or Checker.txt does not exist")
 	quit()
@@ -62,6 +63,8 @@ current_face_shown = 0
 image = None
 image_size = 150
 
+# Make tkinter window
+
 root_window = Tk()
 root_window.title("CNN vs RNN Face Recognition")
 root_window.configure(background = "white smoke")
@@ -70,6 +73,7 @@ root_window.update()
 root_window.minsize(root_window.winfo_width(),root_window.winfo_height())
 
 
+# Helper Functions
 def Save_Checker():
 	checker = open("Checker.txt","w")
 
@@ -85,6 +89,8 @@ def Pop_Up(msg):
 	B1 = Button(popup, text="Okay", command = popup.destroy)
 	B1.pack()
 	popup.mainloop()
+
+# Separate to Individual Faces
 
 def Separate_Group_Pictures(root):
 	global number_unknown_faces
@@ -115,6 +121,7 @@ def Separate_Group_Pictures(root):
 
 	Pop_Up("Successfully Separated Faces")
 
+# Helper Function
 def Delete_Image(root,image_label,classification, classification_text, unknown_faces,faces_path,labeled_path):
 	global current_face_shown,image
 
@@ -131,6 +138,7 @@ def Delete_Image(root,image_label,classification, classification_text, unknown_f
 
 	image = ImageTk.PhotoImage(Image.open(path.join(faces_path,unknown_faces[current_face_shown])))
 	image_label.configure(image=image)
+
 
 def Move_Image(root,image_label,classification, classification_text, unknown_faces,faces_path,labeled_path):
 	global current_face_shown,image
@@ -155,6 +163,7 @@ def Move_Image(root,image_label,classification, classification_text, unknown_fac
 	image = ImageTk.PhotoImage(Image.open(path.join(faces_path,unknown_faces[current_face_shown])))
 	image_label.configure(image=image)
 
+# Label Individual Faces
 def Label_Unknown_Faces(root):
 
 	current_path = os.getcwd()
@@ -206,6 +215,7 @@ def Label_Unknown_Faces(root):
 	filled_known_folder = 1
 	Save_Checker()
 
+# Data Augmentation
 def Augment_Classes(root, data_num):
 
 	num = int(data_num.get())
@@ -269,6 +279,7 @@ def Image_Augment_Classes(root):
 
 	input_window.mainloop()
 
+# Training of CNN Model
 def Train_CNN(root):
 	training_data = []
 	data_path = path.join(os.getcwd(),"Known Faces")
@@ -330,7 +341,7 @@ def Train_CNN(root):
 
 	cnn_model.save("CNN-Model.model")
 
-
+# Training of RNN Model
 def Train_RNN(root):
 	training_data = []
 	data_path = path.join(os.getcwd(),"Known Faces")
@@ -392,6 +403,7 @@ def Train_RNN(root):
 
 	rnn_model.save("RNN-Model.model")
 
+# Testing of CNN Model
 def Classify_CNN(root):
 	group_folder = path.join(os.getcwd(),"Testing Pictures")
 
@@ -427,7 +439,7 @@ def Classify_CNN(root):
 
 			prediction = cnn_model.predict(testing_data)
 
-			print(prediction[0])
+			
 
 			print(img + " is "+str(prediction[0][np.argmax(prediction[0])])+"% sure that it is "+categories[np.argmax(prediction[0])])
 
@@ -436,6 +448,7 @@ def Classify_CNN(root):
 
 		print("Testing Done: "+ str(right)+ " out of " + str(length)+" or "+str(right/length))
 
+# Testing of RNN Model
 def Classify_RNN(root):
 	group_folder = path.join(os.getcwd(),"Testing Pictures")
 
@@ -471,7 +484,7 @@ def Classify_RNN(root):
 
 			prediction = rnn_model.predict(testing_data)
 
-			print(prediction[0])
+			
 
 			print(img + " is "+str(prediction[0][np.argmax(prediction[0])])+"% sure that it is "+categories[np.argmax(prediction[0])])
 
@@ -480,7 +493,7 @@ def Classify_RNN(root):
 
 		print("Testing Done: "+ str(right)+ " out of " + str(length)+" or "+str(right/length))
 
-
+# Main Menu
 def Call_Main_Menu(root):
 
 	button = Button(root,text="Separate Group Pictures",fg = button_foreground,bg=button_background,command = lambda: Separate_Group_Pictures(root))
@@ -508,6 +521,6 @@ def Call_Main_Menu(root):
 	button = Button(root,text="Exit",fg = button_foreground,bg=button_background,command = root.destroy)
 	button.grid(row=3,column=1,pady=20)
 
-
+# Call tkinter window
 Call_Main_Menu(root_window)
 root_window.mainloop()
