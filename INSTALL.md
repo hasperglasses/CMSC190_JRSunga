@@ -8,6 +8,8 @@ Python 3
 
 [OpenCV](https://pypi.org/project/opencv-python/)
 
+face_recognition (pip install face_recognition)
+
 
 # Usage
 ### Separate Group Pictures

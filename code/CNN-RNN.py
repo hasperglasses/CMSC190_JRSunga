@@ -44,7 +44,7 @@ import pickle
 button_foreground = "blue"
 button_background = "gray82"
 
-# Loading
+# Checking important files and reading checker to get image number for image separation
 if(not (path.exists("Checker.txt") and path.exists("Known Faces") and path.exists("Unknown Group Pictures") and path.exists("Unknown Individual Faces"))):
 	print("Either Known Faces, Unknown Group Pictures, Unknown Individual Faces, Known Faces, or Checker.txt does not exist")
 	quit()
@@ -54,7 +54,8 @@ cnn_loaded, rnn_loaded, filled_known_folder, number_unknown_faces = checker.read
 checker.close()
 
 
-#GLOBALS
+#global variables for usage of cnn/rnn models
+#folders, and images
 cnn_loaded = int(cnn_loaded)
 rnn_loaded = int(rnn_loaded)
 filled_known_folder = int(filled_known_folder)
@@ -63,7 +64,7 @@ current_face_shown = 0
 image = None
 image_size = 150
 
-# Make tkinter window
+#initializing tkinter window for UI convenience of the study
 
 root_window = Tk()
 root_window.title("CNN vs RNN Face Recognition")
@@ -74,6 +75,8 @@ root_window.minsize(root_window.winfo_width(),root_window.winfo_height())
 
 
 # Helper Functions
+
+#saves checker.txt for image numbers
 def Save_Checker():
 	checker = open("Checker.txt","w")
 
@@ -81,6 +84,7 @@ def Save_Checker():
 
 	checker.close()
 
+#pops up message to notify user
 def Pop_Up(msg):
 	popup = tk.Tk()
 	popup.wm_title("Pop Up!")
@@ -91,11 +95,15 @@ def Pop_Up(msg):
 	popup.mainloop()
 
 # Separate to Individual Faces
-
+#detecting individual faces in an image
 def Separate_Group_Pictures(root):
+	#loading folder
 	global number_unknown_faces
 	group_folder = path.join(os.getcwd(),"Unknown Group Pictures")
 
+	#traversing folder for images
+	#per image, uses face_locations() to determine coordinates of faces
+	#crops image per face_location
 	for img in os.listdir(group_folder):
 		print(img)
 		image = face_recognition.load_image_file(path.join(group_folder,img))
@@ -115,13 +123,13 @@ def Separate_Group_Pictures(root):
 			pil_image.save("Unknown Individual Faces/"+str(number_unknown_faces)+".png","PNG")
 			number_unknown_faces += 1
 	Save_Checker()
-
+	#moving image to another folder to indicate image is already used
 	os.rename(group_folder,path.join(os.getcwd(),"Group Pictures {}").format(int(time.time())))
 	os.mkdir(group_folder)
 
 	Pop_Up("Successfully Separated Faces")
 
-# Helper Function
+#deletes an image in a specified location
 def Delete_Image(root,image_label,classification, classification_text, unknown_faces,faces_path,labeled_path):
 	global current_face_shown,image
 
@@ -139,7 +147,7 @@ def Delete_Image(root,image_label,classification, classification_text, unknown_f
 	image = ImageTk.PhotoImage(Image.open(path.join(faces_path,unknown_faces[current_face_shown])))
 	image_label.configure(image=image)
 
-
+#moves image to a specified location
 def Move_Image(root,image_label,classification, classification_text, unknown_faces,faces_path,labeled_path):
 	global current_face_shown,image
 
@@ -165,19 +173,21 @@ def Move_Image(root,image_label,classification, classification_text, unknown_fac
 
 # Label Individual Faces
 def Label_Unknown_Faces(root):
-
+	#loads folders for unlabeled faces and labeled faces
 	current_path = os.getcwd()
 	labeled_path = path.join(current_path,"Known Faces")
 	faces_path = path.join(current_path,"Unknown Individual Faces")
 
 	unknown_faces = os.listdir(faces_path)
 
+	#if empty
 	if(len(unknown_faces)==0):
 		Pop_Up("There is no image in the Folder named Unknown Individual Faces")
 		label_window.destroy()
 		label_window.update()
 		return
-		
+	
+	#creates window for labeling	
 	label_window = Toplevel()
 	label_window.configure(background = "white smoke")
 	label_window.geometry("500x500")
@@ -186,10 +196,11 @@ def Label_Unknown_Faces(root):
 
 	label_window.wm_title("Label Unknown Faces")
 
+	#loading global variables
 	global current_face_shown, filled_known_folder, image
 	current_face_shown = 0
 
-
+	#add widgets for labeling window
 	image = ImageTk.PhotoImage(Image.open(path.join(faces_path,unknown_faces[current_face_shown])))
 	image_label = Label(label_window, image=image)
 	image_label.pack(pady=20)
@@ -216,28 +227,34 @@ def Label_Unknown_Faces(root):
 	Save_Checker()
 
 # Data Augmentation
+
+#data augmenting image until number of images is met
 def Augment_Classes(root, data_num):
-
+	#get number of images
 	num = int(data_num.get())
-
+	#load folder for getting images
 	save_folder = path.join(os.getcwd(),"Known Faces")
 
 	categories = sorted(os.listdir(save_folder))
-
+	#create data generator for augmentation
 	datagen = ImageDataGenerator(rotation_range = 40,width_shift_range=0.2,height_shift_range=0.2,shear_range=0.2,zoom_range=0.2,horizontal_flip=True,fill_mode="nearest")
 
+	#traverse classes
 	for category in categories:
+		#load per class
 		class_path = path.join(save_folder,category)
 
 		images = os.listdir(class_path)
 
-		
+		#get an image for data augmentation
 		image_location = filedialog.askopenfilename(initialdir = class_path,title="Choose an Image",filetypes=[("image files",(".png",".jpg"))])
 
 		while not image_location:
 			image_location = filedialog.askopenfilename(initialdir = class_path,title="Choose an Image",filetypes=[("image files",(".png",".jpg"))])			
 
 		dirpath = os.getcwd()
+
+		#prepare images and locations for data augmentation
 
 		common_prefix = os.path.commonprefix([dirpath,image_location])
 
@@ -251,9 +268,10 @@ def Augment_Classes(root, data_num):
 
 		i = len(images)
 
+		#check if number already met
 		if(i >= num):
 			continue
-
+		#generate data
 		for batch in datagen.flow(image_array, batch_size = 1, save_to_dir = class_path,save_prefix= category+"{}".format(int(time.time())), save_format="png"):
 			i += 1
 			if i == num:
@@ -263,6 +281,7 @@ def Augment_Classes(root, data_num):
 	root.update()
 	Pop_Up("Data Augmented!")
 
+#get resulting number of images after augmentation to call data_augment
 def Image_Augment_Classes(root):
 
 	input_window = Toplevel()
@@ -281,11 +300,13 @@ def Image_Augment_Classes(root):
 
 # Training of CNN Model
 def Train_CNN(root):
+
+	#Load training data set
 	training_data = []
 	data_path = path.join(os.getcwd(),"Known Faces")
 
 	categories = sorted(os.listdir(data_path))
-
+	#categorize data sets
 	for category in categories:
 		category_path = path.join(data_path,category)
 		category_num = categories.index(category)
@@ -294,7 +315,7 @@ def Train_CNN(root):
 			new_img = cv2.resize(img_array, (image_size, image_size))
 
 			training_data.append([new_img,category_num])
-
+	#shuffle and normalize data set
 	random.shuffle(training_data)
 
 	X = []
@@ -311,6 +332,7 @@ def Train_CNN(root):
 	y = np.array(y)
 	print(y)
 
+	#check if model already existing if not, create a model before training
 	if(path.exists("CNN-Model.model")):
 		cnn_model = tf.keras.models.load_model("CNN-Model.model")
 		cnn_model.save("CNN-Model-{}.model".format(int(time.time())))
@@ -332,7 +354,7 @@ def Train_CNN(root):
 
 		cnn_model.compile(loss="sparse_categorical_crossentropy",optimizer="adam",metrics=["accuracy"])
 
-
+	#create training method and train
 	earlyStopping = EarlyStopping(monitor='val_loss', patience=8, verbose=0, mode='min')
 
 	cnn_model.fit(X, y, batch_size=16, epochs=1000,validation_split=0.1, callbacks= [earlyStopping])
@@ -343,11 +365,13 @@ def Train_CNN(root):
 
 # Training of RNN Model
 def Train_RNN(root):
+
+	#Load training data set
 	training_data = []
 	data_path = path.join(os.getcwd(),"Known Faces")
 
 	categories = sorted(os.listdir(data_path))
-
+	#categorize data sets
 	for category in categories:
 		category_path = path.join(data_path,category)
 		category_num = categories.index(category)
@@ -356,7 +380,7 @@ def Train_RNN(root):
 			new_img = cv2.resize(img_array, (image_size, image_size))
 
 			training_data.append([new_img,category_num])
-
+	#shuffle and normalize data set
 	random.shuffle(training_data)
 
 	X = []
@@ -376,6 +400,7 @@ def Train_RNN(root):
 
 	print(X.shape)
 
+	#check if model already existing if not, create a model before training
 	if(path.exists("RNN-Model.model")):
 		rnn_model = tf.keras.models.load_model("RNN-Model.model")
 		rnn_model.save("RNN-Model-{}.model".format(int(time.time())))
@@ -397,6 +422,7 @@ def Train_RNN(root):
 
 		rnn_model.compile(loss="sparse_categorical_crossentropy",optimizer=optimizer,metrics=["accuracy"])
 
+	#create training method and train
 	earlyStopping = EarlyStopping(monitor='val_loss', patience=8, verbose=0, mode='min')
 
 	rnn_model.fit(X, y, batch_size=16, epochs=1000,validation_split=0.1, callbacks= [earlyStopping])
@@ -405,18 +431,21 @@ def Train_RNN(root):
 
 # Testing of CNN Model
 def Classify_CNN(root):
+	#Load testing data set
 	group_folder = path.join(os.getcwd(),"Testing Pictures")
 
 	categories = sorted(os.listdir(group_folder))
 
+	#check first if model is existing
 	if(path.exists("CNN-Model.model")):
 		cnn_model = tf.keras.models.load_model("CNN-Model.model")
 	else:
 		print("No CNN Model yet.")
 		return
 
+	#traverse classes and predict
 	for category in categories:
-
+		#per class load images and predict
 		category_path = path.join(group_folder,category)
 		category_num = categories.index(category)
 
@@ -425,35 +454,39 @@ def Classify_CNN(root):
 
 		print("Currently testing: "+ category)
 		for img in os.listdir(category_path):
+			#load image in class
 			img_array = cv2.imread(path.join(category_path,img),cv2.IMREAD_GRAYSCALE)
 			new_img = cv2.resize(img_array, (image_size, image_size))
 
 			testing_data = []
 
-
+			#normalize
 			testing_data.append(new_img)
 
 			testing_data = np.array(testing_data).reshape(-1, image_size, image_size, 1)
 
 			testing_data = testing_data/255.0
 
+			#predict
 			prediction = cnn_model.predict(testing_data)
 
 			
-
+			#get predictions and get max prediction
 			print(img + " is "+str(prediction[0][np.argmax(prediction[0])])+"% sure that it is "+categories[np.argmax(prediction[0])])
 
+			#check if correct
 			if(categories[np.argmax(prediction[0])]==category):
 				right += 1
-
+		#print accuracy
 		print("Testing Done: "+ str(right)+ " out of " + str(length)+" or "+str(right/length))
 
 # Testing of RNN Model
 def Classify_RNN(root):
+	#Load testing data set
 	group_folder = path.join(os.getcwd(),"Testing Pictures")
 
 	categories = sorted(os.listdir(group_folder))
-
+	#check first if model is existing
 	if(path.exists("RNN-Model.model")):
 		rnn_model = tf.keras.models.load_model("RNN-Model.model")
 	else:
@@ -461,7 +494,7 @@ def Classify_RNN(root):
 		return
 
 	for category in categories:
-
+		#per class load images and predict
 		category_path = path.join(group_folder,category)
 		category_num = categories.index(category)
 
@@ -470,32 +503,37 @@ def Classify_RNN(root):
 
 		print("Currently testing: "+ category)
 		for img in os.listdir(category_path):
+			#load image in class
 			img_array = cv2.imread(path.join(category_path,img),cv2.IMREAD_GRAYSCALE)
 			new_img = cv2.resize(img_array, (image_size, image_size))
 
 			testing_data = []
 
-
+			#normalize
 			testing_data.append(new_img)
 
 			testing_data = np.array(testing_data).reshape(-1, image_size, image_size)
 
 			testing_data = testing_data/255.0
 
+			#predict
 			prediction = rnn_model.predict(testing_data)
 
 			
-
+			#get predictions and get max prediction
 			print(img + " is "+str(prediction[0][np.argmax(prediction[0])])+"% sure that it is "+categories[np.argmax(prediction[0])])
-
+			#check if correct
 			if(categories[np.argmax(prediction[0])]==category):
 				right += 1
-
+		#print accuracy
 		print("Testing Done: "+ str(right)+ " out of " + str(length)+" or "+str(right/length))
 
 # Main Menu
 def Call_Main_Menu(root):
-
+	#create widgets to call functions for convenience of study
+	#functions only created for training, testing, detecting, and augmenting faces
+	#labeling is in the program but is not encouraged for use
+	#other methods will be done manually
 	button = Button(root,text="Separate Group Pictures",fg = button_foreground,bg=button_background,command = lambda: Separate_Group_Pictures(root))
 	button.grid(row=0,column=1,pady=20)
 
